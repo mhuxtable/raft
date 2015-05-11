@@ -4,7 +4,7 @@ LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 VPATH = src
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
-GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
+#GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CFLAGS += -Iinclude -Werror -Werror=return-type -Werror=uninitialized -Wcast-align \
 	  -Wno-pointer-sign -fno-omit-frame-pointer -fno-common -fsigned-char \

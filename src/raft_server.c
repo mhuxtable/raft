@@ -29,11 +29,11 @@ static void __log(raft_server_t *me_, const char *fmt, ...)
     va_start(args, fmt);
     vsprintf(buf, fmt, args);
 
-#if 0 /* debugging */
+//#if 0 /* debugging */
     raft_server_private_t* me = (raft_server_private_t*)me_;
     printf("%d: %s\n", me->nodeid, buf);
-    __FUNC_log(bto, src, buf);
-#endif
+//    __FUNC_log(bto, src, buf);
+//#endif
 }
 
 raft_server_t* raft_new()
