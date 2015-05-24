@@ -273,8 +273,18 @@ int raft_recv_appendentries(
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     me->timeout_elapsed = 0;
-
-    __log(ALLBUTPERIODIC, me_, "received appendentries from: %d", node);
+    __log(ALLBUTPERIODIC, me_, "received appendentries from: %d  "
+/*		"AE term %d    Local %d\n"
+		"AE LDID %d    \n"
+		"AEPLIDX %d    Local CUR_IDX %d  LAST_APP_IDX %d\n"
+		"AEPLTER %d    \n"
+		"AELCMIT %d    \n",*/,
+		node/*, ae->term, me->current_term,
+		ae->leader_id,
+		ae->prev_log_idx,
+		me->current_idx, me->last_applied_idx,
+		ae->prev_log_term,
+		ae->leader_commit*/);
 
     r->term = me->current_term;
 
@@ -355,6 +365,8 @@ int raft_recv_appendentries(
 
     int i;
 
+    fprintf(stderr, "About to try to append entries to log\n");
+
     /* append all entries to log */
     for (i = 0; i < ae->n_entries; i++)
     {
@@ -366,6 +378,7 @@ int raft_recv_appendentries(
         c->len = cmd->len;
         c->id = cmd->id;
         c->data = (unsigned char*)malloc(cmd->len);
+
         memcpy(c->data, cmd->data, cmd->len);
         if (-1 == raft_append_entry(me_, c))
         {
@@ -500,6 +513,10 @@ int raft_apply_entry(raft_server_t* me_)
     if (!(e = log_get_from_idx(me->log, me->last_applied_idx + 1)))
         return -1;
 
+    if (me->state != RAFT_STATE_LEADER)
+    {
+	    __log(ALLBUTPERIODIC, me_, "now have a majority on entry %d", e->id);
+    }
     __log(ALLBUTPERIODIC, me_, "applying log: %d", me->last_applied_idx);
 
     me->last_applied_idx++;
@@ -539,9 +556,11 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 	    raft_entry_t *e = raft_get_entry_from_idx(me_, raft_node_get_next_idx(p)-1);
 	    if (!e || me->current_idx == 0)
 	    {
+		    fprintf(stderr, "1. %d %d\n", me->current_term, 0);
 		    ae.prev_log_term = me->current_term;
 		    ae.prev_log_idx  = 0;
 	    } else {
+		    fprintf(stderr, "2. %d %d\n", e->term, e->id);
 		    ae.prev_log_term = e->term;
 		    ae.prev_log_idx  = e->id;
 	    }
@@ -558,6 +577,8 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     else
     {
 	    /* need to send one or more log entries to the follower */
+	    __log(VERBOSE, me_, "Sending appentries RPC to node %d  %d >= %d\n",
+		node, raft_get_current_idx(me_), raft_node_get_next_idx(p));
 	    raft_entry_t *e = raft_get_entry_from_idx(me_, raft_node_get_next_idx(p));
 	    raft_entry_t *e2 = (e->id == 1 ? NULL :
 			    raft_get_entry_from_idx(me_,
