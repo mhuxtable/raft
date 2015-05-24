@@ -229,6 +229,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
         for (i = r->first_idx; i <= r->current_idx; i++)
             log_mark_node_has_committed(me->log, i);
 
+	// update the bookkeeping for the next index to send the node
+	raft_node_set_next_idx(p, r->current_idx + 1);
+
         while (1)
         {
             raft_entry_t* e;
@@ -534,7 +537,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     if (raft_get_current_idx(me_) < raft_node_get_next_idx(p))
     {
 	    raft_entry_t *e = raft_get_entry_from_idx(me_, raft_node_get_next_idx(p)-1);
-	    if (!e)
+	    if (!e || me->current_idx == 0)
 	    {
 		    ae.prev_log_term = me->current_term;
 		    ae.prev_log_idx  = 0;
@@ -555,7 +558,25 @@ void raft_send_appendentries(raft_server_t* me_, int node)
     else
     {
 	    /* need to send one or more log entries to the follower */
-	    __log(VERBOSE, me_, "We should be sending a log entry, but not implemented.\n");
+	    raft_entry_t *e = raft_get_entry_from_idx(me_, raft_node_get_next_idx(p));
+	    raft_entry_t *e2 = (e->id == 1 ? NULL :
+			    raft_get_entry_from_idx(me_,
+				    raft_node_get_next_idx(p) -
+				    1));
+	    ae.term = me->current_term;
+	    ae.leader_id = me->nodeid;
+	    ae.n_entries = 1;
+
+	    msg_entry_t msg = { 0 };
+	    msg.id = e->id;
+	    msg.data = e->data;
+	    msg.len  = e->len;
+
+	    ae.entries = &msg;
+	    ae.leader_commit = raft_get_commit_idx(me_);
+	    ae.prev_log_idx = raft_node_get_next_idx(p) - 1;
+	    ae.prev_log_term = (e2 ? e2->term : me->current_term);
+	    me->cb.send_appendentries(me_, me->udata, node, &ae);
 	    return;
     }
 }
