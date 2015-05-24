@@ -23,17 +23,18 @@
 
 enum loglevel
 {
-    DEBUG,
-    ALLBUTPERIODIC,
-    VERBOSE,
-    NONE
+    DEBUG = 3,
+    ALLBUTPERIODIC = 2,
+    VERBOSE = 1,
+    NONE = 0
 };
 static enum loglevel curlog = ALLBUTPERIODIC;
+//static enum loglevel curlog = DEBUG;
 
 static void __log(enum loglevel l, raft_server_t *me_, const char *fmt, ...)
 {
     if (NONE == l) return;
-    if (curlog != l) return;
+    if (curlog < l) return;
 
     char buf[1024];
     va_list args;
@@ -204,6 +205,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
             /* majority has this */
             if (e && me->num_nodes / 2 <= e->num_nodes)
             {
+		__log(DEBUG, me_, "has a majority; applying to state machine\n");
                 if (-1 == raft_apply_entry(me_))
                     break;
             }
