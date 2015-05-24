@@ -518,14 +518,36 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 
     raft_node_t* p = raft_get_node(me_, node);
 
+    // code which follows has been heavily modified because it was marked off
+    // as "TODO" in the original implementation, which breaks the appendentries
+    // RPC in the state machine
     msg_appendentries_t ae;
-    ae.term = me->current_term;
-    ae.leader_id = me->nodeid;
-    ae.prev_log_term = raft_node_get_next_idx(p);
-    // TODO:
-    ae.prev_log_idx = 0;
-    ae.n_entries = 0;
-    me->cb.send_appendentries(me_, me->udata, node, &ae);
+
+    /* need to figure out if we just need to send a heartbeat to this node --
+       the behaviour when last log index in the leader < next index for
+       follower -- or if we need to send one or more entries to this follower
+       in order to advance the state machine. This is the case when last log
+       index in the leader is >= next index in the follower. I do this as two
+       separate steps primarily for debugging reasons, since I know a priori
+       that the code for heartbeating works and does not lead to deadlocks, and
+       would like to preserve this as is. */
+    if (raft_get_current_idx(me_) < raft_node_get_next_idx(p))
+    {
+	    /* heartbeats only */
+	    ae.term = me->current_term;
+	    ae.leader_id = me->nodeid;
+	    ae.prev_log_term = raft_node_get_next_idx(p);
+	    // TODO:
+	    ae.prev_log_idx = 0;
+	    ae.n_entries = 0;
+	    me->cb.send_appendentries(me_, me->udata, node, &ae);
+    }
+    else
+    {
+	    /* need to send one or more log entries to the follower */
+	    __log(VERBOSE, me_, "We should be sending a log entry, but not implemented.\n");
+	    return;
+    }
 }
 
 void raft_send_appendentries_all(raft_server_t* me_)
