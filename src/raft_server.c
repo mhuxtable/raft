@@ -89,7 +89,7 @@ raft_server_t* raft_new()
         return NULL;
     me->current_term = 0;
     me->voted_for = -1;
-    me->current_idx = 1;
+    me->current_idx = 0;
     me->timeout_elapsed = 0;
     me->request_timeout = 200;
     me->election_timeout = 1000;
@@ -287,15 +287,15 @@ int raft_recv_appendentries(
         return 0;
     }
 
-#if 0
-    if (-1 != ae->prev_log_idx &&
+//#if 0
+    if (0 != ae->prev_log_idx &&
         ae->prev_log_idx < raft_get_current_idx(me_))
     {
-        __log(me_, "AE prev_idx is less than current idx");
+        __log(ALLBUTPERIODIC, me_, "AE prev_idx is less than current idx");
         r->success = 0;
         return 0;
     }
-#endif
+//#endif
 
     /* not the first appendentries we've received */
     if (0 != ae->prev_log_idx)
@@ -533,12 +533,21 @@ void raft_send_appendentries(raft_server_t* me_, int node)
        would like to preserve this as is. */
     if (raft_get_current_idx(me_) < raft_node_get_next_idx(p))
     {
+	    raft_entry_t *e = raft_get_entry_from_idx(me_, raft_node_get_next_idx(p)-1);
+	    if (!e)
+	    {
+		    ae.prev_log_term = me->current_term;
+		    ae.prev_log_idx  = 0;
+	    } else {
+		    ae.prev_log_term = e->term;
+		    ae.prev_log_idx  = e->id;
+	    }
 	    /* heartbeats only */
 	    ae.term = me->current_term;
 	    ae.leader_id = me->nodeid;
-	    ae.prev_log_term = raft_node_get_next_idx(p);
+	    //ae.prev_log_term = 
 	    // TODO:
-	    ae.prev_log_idx = 0;
+	    //ae.prev_log_idx = 0;
 	    ae.n_entries = 0;
 	    ae.leader_commit = raft_get_commit_idx(me_);
 	    me->cb.send_appendentries(me_, me->udata, node, &ae);
