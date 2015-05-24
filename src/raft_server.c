@@ -540,6 +540,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 	    // TODO:
 	    ae.prev_log_idx = 0;
 	    ae.n_entries = 0;
+	    ae.leader_commit = raft_get_commit_idx(me_);
 	    me->cb.send_appendentries(me_, me->udata, node, &ae);
     }
     else
