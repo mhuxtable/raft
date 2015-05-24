@@ -78,7 +78,10 @@ int log_append_entry(log_t* me_, raft_entry_t* c)
     log_private_t* me = (log_private_t*)me_;
 
     if (0 == c->id)
+    {
+	fprintf(stderr, "Log id is 0, error\n");
         return -1;
+    }
 
     __ensurecapacity(me);
 

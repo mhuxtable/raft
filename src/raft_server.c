@@ -24,10 +24,11 @@
 enum loglevel
 {
     DEBUG,
+    ALLBUTPERIODIC,
     VERBOSE,
     NONE
 };
-static enum loglevel curlog = DEBUG;
+static enum loglevel curlog = ALLBUTPERIODIC;
 
 static void __log(enum loglevel l, raft_server_t *me_, const char *fmt, ...)
 {
@@ -246,7 +247,7 @@ int raft_recv_appendentries(
     /* 1. Reply false if term < currentTerm (§5.1) */
     if (ae->term < me->current_term)
     {
-        __log(DEBUG, me_, "AE term is less than current term");
+        __log(ALLBUTPERIODIC, me_, "AE term is less than current term");
         r->success = 0;
         return 0;
     }
@@ -272,7 +273,7 @@ int raft_recv_appendentries(
                whose term matches prevLogTerm (§5.3) */
             if (e->term != ae->prev_log_term)
             {
-                __log(DEBUG, me_, "AE term doesn't match prev_idx");
+                __log(ALLBUTPERIODIC, me_, "AE term doesn't match prev_idx");
                 r->success = 0;
                 return 0;
             }
@@ -289,7 +290,7 @@ int raft_recv_appendentries(
         }
         else
         {
-            __log(DEBUG, me_, "AE no log at prev_idx");
+            __log(ALLBUTPERIODIC, me_, "AE no log at prev_idx");
             r->success = 0;
             return 0;
         }
@@ -330,7 +331,7 @@ int raft_recv_appendentries(
         memcpy(c->data, cmd->data, cmd->len);
         if (-1 == raft_append_entry(me_, c))
         {
-            __log(DEBUG, me_, "AE failure; couldn't append entry");
+            __log(ALLBUTPERIODIC, me_, "AE failure; couldn't append entry");
             r->success = 0;
             return -1;
         }
@@ -411,7 +412,7 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
     raft_entry_t ety;
     int res, i;
 
-    __log(DEBUG, me_, "received entry from: %d", node);
+    __log(ALLBUTPERIODIC, me_, "received entry from: %d", node);
 
     ety.term = me->current_term;
     ety.id = e->id;
@@ -432,7 +433,7 @@ int raft_send_requestvote(raft_server_t* me_, int node)
     raft_server_private_t* me = (raft_server_private_t*)me_;
     msg_requestvote_t rv;
 
-    __log(DEBUG, me_, "sending requestvote to: %d", node);
+    __log(ALLBUTPERIODIC, me_, "sending requestvote to: %d", node);
 
     rv.term = me->current_term;
     rv.last_log_idx = raft_get_current_idx(me_);
@@ -461,7 +462,7 @@ int raft_apply_entry(raft_server_t* me_)
     if (!(e = log_get_from_idx(me->log, me->last_applied_idx + 1)))
         return -1;
 
-    __log(DEBUG, me_, "applying log: %d", me->last_applied_idx);
+    __log(ALLBUTPERIODIC, me_, "applying log: %d", me->last_applied_idx);
 
     me->last_applied_idx++;
     if (me->commit_idx < me->last_applied_idx)
