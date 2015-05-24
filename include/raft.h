@@ -11,6 +11,10 @@
 #ifndef RAFT_H_
 #define RAFT_H_
 
+// added to facilitate the external library changing the logging level at runtime
+// (e.g. by means of passing a signal or similar)
+void change_log_level(int inc);
+
 typedef struct
 {
     /** The ID that this node used to have.

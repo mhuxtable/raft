@@ -31,6 +31,39 @@ enum loglevel
 static enum loglevel curlog = ALLBUTPERIODIC;
 //static enum loglevel curlog = DEBUG;
 
+void change_log_level(int inc)
+{
+	if (inc != -1 && inc != 0 && inc != 1)
+		return;
+	if (inc == -1 && curlog == 0)
+		return;
+	if (inc == 1 && curlog == 3)
+		return;
+	curlog += inc;
+	
+	char *loglevel;
+	switch (curlog)
+	{
+		case DEBUG:
+			loglevel = "DEBUG";
+			break;
+		case ALLBUTPERIODIC:
+			loglevel = "ALLBUTPERIODIC";
+			break;
+		case VERBOSE:
+			loglevel = "VERBOSE";
+			break;
+		case NONE:
+			loglevel = "NONE";
+			break;
+		default:
+			loglevel = "Out of bounds";
+			break;
+	}
+	fprintf(stderr, "[Raft Engine] Log level is now %s\n", loglevel);
+	return;
+}
+
 static void __log(enum loglevel l, raft_server_t *me_, const char *fmt, ...)
 {
     if (NONE == l) return;
