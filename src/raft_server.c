@@ -218,7 +218,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
 {
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
-    __log(DEBUG, me_, "received appendentries response from: %d", node);
+    __log(ALLBUTPERIODIC, me_, "received appendentries response from: %d", node);
 
     raft_node_t* p = raft_get_node(me_, node);
 
@@ -238,7 +238,7 @@ int raft_recv_appendentries_response(raft_server_t* me_,
             /* majority has this */
             if (e && me->num_nodes / 2 <= e->num_nodes)
             {
-		__log(DEBUG, me_, "has a majority; applying to state machine\n");
+		__log(ALLBUTPERIODIC , me_, "has a majority; applying to state machine\n");
                 if (-1 == raft_apply_entry(me_))
                     break;
             }
@@ -271,7 +271,7 @@ int raft_recv_appendentries(
 
     me->timeout_elapsed = 0;
 
-    __log(DEBUG, me_, "received appendentries from: %d", node);
+    __log(ALLBUTPERIODIC, me_, "received appendentries from: %d", node);
 
     r->term = me->current_term;
 
