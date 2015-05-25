@@ -254,6 +254,11 @@ int raft_recv_appendentries_response(raft_server_t* me_,
     {
         /* If AppendEntries fails because of log inconsistency:
            decrement nextIndex and retry (§5.3) */
+	__log(VERBOSE, me_, "Node %d refused AppendEntries.\n"
+		"Notified first_idx %d, current_idx: %d for local actual %d\n"
+		"raft_node local next_idx value is %d\n",
+		node, r->first_idx, r->current_idx, raft_get_current_idx(me_),
+		raft_node_get_next_idx(p));
         assert(0 <= raft_node_get_next_idx(p));
         // TODO does this have test coverage?
 	// In CRAFT the node reports the last index, so we can use this to figure
@@ -275,18 +280,7 @@ int raft_recv_appendentries(
     raft_server_private_t* me = (raft_server_private_t*)me_;
 
     me->timeout_elapsed = 0;
-    __log(ALLBUTPERIODIC, me_, "received appendentries from: %d  "
-/*		"AE term %d    Local %d\n"
-		"AE LDID %d    \n"
-		"AEPLIDX %d    Local CUR_IDX %d  LAST_APP_IDX %d\n"
-		"AEPLTER %d    \n"
-		"AELCMIT %d    \n",*/,
-		node/*, ae->term, me->current_term,
-		ae->leader_id,
-		ae->prev_log_idx,
-		me->current_idx, me->last_applied_idx,
-		ae->prev_log_term,
-		ae->leader_commit*/);
+    __log(ALLBUTPERIODIC, me_, "received appendentries from: %d  ", node);
 
     r->term = me->current_term;
 
@@ -367,8 +361,6 @@ int raft_recv_appendentries(
 
     int i;
 
-    fprintf(stderr, "About to try to append entries to log\n");
-
     /* append all entries to log */
     for (i = 0; i < ae->n_entries; i++)
     {
@@ -376,12 +368,15 @@ int raft_recv_appendentries(
 
         /* TODO: replace malloc with mempoll/arena */
         raft_entry_t* c = (raft_entry_t*)malloc(sizeof(raft_entry_t));
+	memset(c, 0, sizeof(raft_entry_t));
         c->term = me->current_term;
         c->len = cmd->len;
         c->id = cmd->id;
-        c->data = (unsigned char*)malloc(cmd->len);
 
-        memcpy(c->data, cmd->data, cmd->len);
+	unsigned char *buf = (unsigned char *)malloc(cmd->len);
+        memcpy(buf, cmd->data, cmd->len);
+        c->data = buf;
+
         if (-1 == raft_append_entry(me_, c))
         {
             __log(ALLBUTPERIODIC, me_, "AE failure; couldn't append entry");
@@ -519,7 +514,8 @@ int raft_apply_entry(raft_server_t* me_)
 
     if (me->state != RAFT_STATE_LEADER)
     {
-	    __log(ALLBUTPERIODIC, me_, "now have a majority on entry %d", e->id);
+	    __log(ALLBUTPERIODIC, me_, "now have a majority on entry %d %d",
+			    e->id, me->last_applied_idx + 1);
     }
     __log(ALLBUTPERIODIC, me_, "applying log: %d", me->last_applied_idx);
 
@@ -560,11 +556,11 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 	    raft_entry_t *e = raft_get_entry_from_idx(me_, raft_node_get_next_idx(p)-1);
 	    if (!e || me->current_idx == 0)
 	    {
-		    fprintf(stderr, "1. %d %d\n", me->current_term, 0);
+		    __log(DEBUG, me_, "1. %d %d\n", me->current_term, 0);
 		    ae.prev_log_term = me->current_term;
 		    ae.prev_log_idx  = 0;
 	    } else {
-		    fprintf(stderr, "2. %d %d\n", e->term, e->id);
+		    __log(DEBUG, me_, "2. %d %d\n", e->term, e->id);
 		    ae.prev_log_term = e->term;
 		    ae.prev_log_idx  = e->id;
 	    }
@@ -596,6 +592,7 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 	    msg.id = e->id;
 	    msg.data = e->data;
 	    msg.len  = e->len;
+	    fprintf(stderr, "sending %d %p %s\n", msg.id, msg.data, (char*)e->data);
 
 	    ae.entries = &msg;
 	    ae.leader_commit = raft_get_commit_idx(me_);
