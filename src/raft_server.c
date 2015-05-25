@@ -93,6 +93,7 @@ raft_server_t* raft_new()
     me->timeout_elapsed = 0;
     me->request_timeout = 200;
     me->election_timeout = 1000;
+    me->commit_idx = 0;
     me->log = log_new();
     raft_set_state((raft_server_t*)me, RAFT_STATE_FOLLOWER);
     return (raft_server_t*)me;
@@ -467,8 +468,10 @@ int raft_recv_entry(raft_server_t* me_, int node, msg_entry_t* e,
 
     ety.term = me->current_term;
     ety.id = e->id;
-    ety.data = e->data;
+    ety.data = (unsigned char *)malloc(e->len);
+    memcpy(ety.data, e->data, e->len);
     ety.len = e->len;
+
     res = raft_append_entry(me_, &ety);
     for (i = 0; i < me->num_nodes; i++)
         if (me->nodeid != i)
