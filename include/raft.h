@@ -379,4 +379,8 @@ int raft_get_nvotes_for_me(raft_server_t* me_);
  * @return node ID of who I voted for */
 int raft_get_voted_for(raft_server_t* me);
 
+
+// added to public interface for debugging
+int raft_get_commit_idx(raft_server_t* me_);
+
 #endif /* RAFT_H_ */
