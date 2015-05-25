@@ -256,8 +256,9 @@ int raft_recv_appendentries_response(raft_server_t* me_,
            decrement nextIndex and retry (§5.3) */
         assert(0 <= raft_node_get_next_idx(p));
         // TODO does this have test coverage?
-        // TODO can jump back to where node is different instead of iterating
-        raft_node_set_next_idx(p, raft_node_get_next_idx(p) - 1);
+	// In CRAFT the node reports the last index, so we can use this to figure
+	// out what log to send next (NOT part of the Raft algorithm proper).
+        raft_node_set_next_idx(p, r->current_idx + 1);
         raft_send_appendentries(me_, node);
     }
 
