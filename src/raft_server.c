@@ -592,7 +592,9 @@ void raft_send_appendentries(raft_server_t* me_, int node)
 	    msg.id = e->id;
 	    msg.data = e->data;
 	    msg.len  = e->len;
+#ifdef DEBUG
 	    fprintf(stderr, "sending %d %p %s\n", msg.id, msg.data, (char*)e->data);
+#endif
 
 	    ae.entries = &msg;
 	    ae.leader_commit = raft_get_commit_idx(me_);
